@@ -1,28 +1,30 @@
 name: Build Atmosphere
 
 on:
-  workflow_dispatch: # 允许手动点击按钮触发
+  workflow_dispatch: # 手动触发
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: devkitpro/devkitarm:latest
+    # 更换为 Switch 专用的 devkita64 镜像
+    container: devkitpro/devkita64:latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          submodules: recursive # 必须拉取子模块，否则缺文件
+          submodules: recursive # 必须拉取所有子模块
 
       - name: Install dependencies and build
         shell: bash
         run: |
-          # 更新并安装所需库
+          # 更新源并安装依赖（包含 Python 2 和 lz4）
           (dkp-)pacman -Syu --noconfirm
-          (dkp-)pacman -S --noconfirm switch-dev switch-libjpeg-turbo devkitARM devkitarm-rules
+          (dkp-)pacman -S --noconfirm switch-dev switch-libjpeg-turbo devkitARM devkitarm-rules python2 python-lz4
           
-          # 环境配置
-          source /opt/devkitpro/switchvars.sh
+          # 配置环境
+          export DEVKITPRO=/opt/devkitpro
+          export DEVKITA64=$DEVKITPRO/devkitA64
           git config --global --add safe.directory "*"
           
           # 执行编译
@@ -32,4 +34,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: atmosphere-build
-          path: atmosphere-*.zip # 上传编译产物
+          path: atmosphere-*.zip # 上传 ZIP 整合包
