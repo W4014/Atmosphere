@@ -17,29 +17,16 @@ jobs:
       - name: Build Atmosphere
         shell: bash
         run: |
-          # 1. 设置环境变量
-          export PATH=/opt/devkitpro/pacman/bin:$PATH
+          # 不再执行 pacman 和 pip，直接使用镜像自带的完整开发环境
           export DEVKITPRO=/opt/devkitpro
           export DEVKITA64=$DEVKITPRO/devkitA64
-          
-          # 2. 更新源，只安装最基础的开发包（不用装 python2 了）
-          pacman -Sy --noconfirm
-          pacman -S --noconfirm switch-dev switch-libjpeg-turbo devkitARM devkitarm-rules
-          
-          # 3. 安装 Python 3 和 lz4（为了适应打包脚本可能调用 python 的情况）
-          pacman -S --noconfirm python3 python-pip
-          pip install lz4
-          
-          # 4. 配置安全目录
           git config --global --add safe.directory "*"
           
-          # 5. 【核心修改】不执行 make dist，直接 make
-          # 因为 dist 打包脚本强依赖 Python 2，我们只要核心文件即可
+          # 直接编译核心文件（忽略需要 Python 2 的 dist 打包环节）
           make -j$(nproc)
-          
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: atmosphere-core
-          # 上传编译生成的 out 目录，里面包含所有核心文件
           path: out/
