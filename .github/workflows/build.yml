@@ -12,7 +12,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          submodules: recursive # 必须拉取最新子模块
+          submodules: recursive
 
       - name: Build Atmosphere
         shell: bash
@@ -21,12 +21,18 @@ jobs:
           export DEVKITA64=$DEVKITPRO/devkitA64
           git config --global --add safe.directory "*"
           
-          # 【新增】强制重新编译 libvapours，避免使用镜像里的旧预编译库
-          cd libraries/libvapours
-          make -j$(nproc) || echo "libvapours 单独编译可能不需要，继续往下走"
-          cd ../..
+          # ========== 核心修改：强制同步官方最新源码 ==========
+          # 1. 添加官方上游仓库地址
+          git remote add upstream https://github.com/Atmosphere-NX/Atmosphere.git
+          # 2. 拉取官方最新代码
+          git fetch upstream
+          # 3. 强制将你的仓库重置为官方最新状态（这会覆盖你仓库里的旧代码）
+          git reset --hard upstream/master
+          # 4. 强制拉取官方最新的子模块（解决 pgl 函数缺失的根本原因）
+          git submodule update --init --recursive --remote
+          # ====================================================
           
-          # 开始编译核心文件
+          # 开始编译核心文件（跳过需要 Python 2 的打包步骤）
           make -j$(nproc)
 
       - name: Upload artifacts
