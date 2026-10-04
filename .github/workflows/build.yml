@@ -12,17 +12,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: recursive # 必须拉取最新子模块
 
       - name: Build Atmosphere
         shell: bash
         run: |
-          # 不再执行 pacman 和 pip，直接使用镜像自带的完整开发环境
           export DEVKITPRO=/opt/devkitpro
           export DEVKITA64=$DEVKITPRO/devkitA64
           git config --global --add safe.directory "*"
           
-          # 直接编译核心文件（忽略需要 Python 2 的 dist 打包环节）
+          # 【新增】强制重新编译 libvapours，避免使用镜像里的旧预编译库
+          cd libraries/libvapours
+          make -j$(nproc) || echo "libvapours 单独编译可能不需要，继续往下走"
+          cd ../..
+          
+          # 开始编译核心文件
           make -j$(nproc)
 
       - name: Upload artifacts
