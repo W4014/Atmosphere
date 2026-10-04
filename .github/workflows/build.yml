@@ -1,34 +1,39 @@
 name: Build Atmosphere
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # 手动触发
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: devkitpro/devkitarm:latest
+    # 改用 Switch 专用的 devkita64 镜像
+    container: devkitpro/devkita64:latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: recursive # 必须拉取所有子模块
 
-      - name: Install dependencies and build
+      - name: Build Atmosphere
         shell: bash
         run: |
-          # 1. 更新源并安装依赖（直接使用 pacman，不要加 (dkp-)）
+          # 1. 设置环境变量，把 devkitPro 的 pacman 加入 PATH
+          export PATH=/opt/devkitpro/pacman/bin:$PATH
+          export DEVKITPRO=/opt/devkitpro
+          export DEVKITA64=$DEVKITPRO/devkitA64
+          
+          # 2. 更新源并安装依赖（此时 pacman 可以找到了）
           pacman -Sy --noconfirm
           pacman -S --noconfirm switch-dev switch-libjpeg-turbo devkitARM devkitarm-rules python2 python2-pip
           
-          # 2. 安装 Python 2 的 lz4 库
+          # 3. 安装 Python 2 的 lz4 库（Atmosphere 打包脚本依赖它）
           pip2 install lz4
           
-          # 3. 配置环境变量并编译
-          export DEVKITPRO=/opt/devkitpro
-          export DEVKITA64=$DEVKITPRO/devkitA64
+          # 4. 配置 git 安全目录，防止编译报错
           git config --global --add safe.directory "*"
           
+          # 5. 开始编译并打包
           make -j$(nproc) dist
 
       - name: Upload artifacts
