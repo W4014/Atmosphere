@@ -1,43 +1,45 @@
 name: Build Atmosphere
 
 on:
-  workflow_dispatch: # 手动触发
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    # 改用 Switch 专用的 devkita64 镜像
     container: devkitpro/devkita64:latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          submodules: recursive # 必须拉取所有子模块
+          submodules: recursive
 
       - name: Build Atmosphere
         shell: bash
         run: |
-          # 1. 设置环境变量，把 devkitPro 的 pacman 加入 PATH
+          # 1. 设置环境变量
           export PATH=/opt/devkitpro/pacman/bin:$PATH
           export DEVKITPRO=/opt/devkitpro
           export DEVKITA64=$DEVKITPRO/devkitA64
           
-          # 2. 更新源并安装依赖（此时 pacman 可以找到了）
+          # 2. 更新源，只安装最基础的开发包（不用装 python2 了）
           pacman -Sy --noconfirm
-          pacman -S --noconfirm switch-dev switch-libjpeg-turbo devkitARM devkitarm-rules python2 python2-pip
+          pacman -S --noconfirm switch-dev switch-libjpeg-turbo devkitARM devkitarm-rules
           
-          # 3. 安装 Python 2 的 lz4 库（Atmosphere 打包脚本依赖它）
-          pip2 install lz4
+          # 3. 安装 Python 3 和 lz4（为了适应打包脚本可能调用 python 的情况）
+          pacman -S --noconfirm python3 python-pip
+          pip install lz4
           
-          # 4. 配置 git 安全目录，防止编译报错
+          # 4. 配置安全目录
           git config --global --add safe.directory "*"
           
-          # 5. 开始编译并打包
-          make -j$(nproc) dist
-
+          # 5. 【核心修改】不执行 make dist，直接 make
+          # 因为 dist 打包脚本强依赖 Python 2，我们只要核心文件即可
+          make -j$(nproc)
+          
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: atmosphere-build
-          path: atmosphere-*.zip
+          name: atmosphere-core
+          # 上传编译生成的 out 目录，里面包含所有核心文件
+          path: out/
